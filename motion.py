@@ -11,7 +11,8 @@ def playMP3(fname):
     while pygame.mixer.music.get_busy():
         pygame.time.Clock().tick(10)
 
-def span(dt): return (datetime.datetime.now() - dt).total_seconds()
+def now(): return datetime.datetime.now();
+def span(dt): return (now() - dt).total_seconds()
 def ispan(dt): return int(span(dt))
 
 pygame.mixer.init() # Initialize pygame mixer
@@ -24,10 +25,10 @@ ret, frame1 = cap.read()
 ret, frame2 = cap.read()
 
 curmode = 'stand'  # 'sit' 'stand' 'waitstand'
-dtStartSit = datetime.datetime.now()
-dtStartNoDetect = datetime.datetime.now()
-dtLastPlayUp = datetime.datetime.now()
-dtStartStay = datetime.datetime.now()
+dtStartSit = now()
+dtStartNoDetect = now()
+dtLastPlayUp = now()
+dtStartStay = now()
 isFirstNoDetect = True
 isReadyPlayStayFinish = False
 
@@ -52,29 +53,29 @@ while cap.isOpened(): # метод isOpened() выводит cтатуc виде
         if curmode == 'waitstand':
             curmode = 'stand'
             isFirstNoDetect = True
-            dtStartNoDetect = datetime.datetime.now()
+            dtStartNoDetect = now()
             playMP3('reset.wav')
     elif maxsqr > 1400:    # motion detect
         isFirstNoDetect = True
-        dtStartNoDetect = datetime.datetime.now()
+        dtStartNoDetect = now()
         if curmode == 'waitstand':
             if span(dtLastPlayUp) > 1 * 60: #TODO: 1 * 60
                 playMP3("up.wav")
-                dtLastPlayUp = datetime.datetime.now()
+                dtLastPlayUp = now()
         elif curmode == 'sit':
             if span(dtStartSit) > 30 * 60:    #TODO: 30 * 60
                 curmode = 'waitstand'
         elif curmode == 'stand':
             curmode = 'sit'
-            dtStartSit = datetime.datetime.now()
+            dtStartSit = now()
     else:      # no motion detect
         if isFirstNoDetect:
             isFirstNoDetect = False
-            dtStartNoDetect = datetime.datetime.now()
+            dtStartNoDetect = now()
         if span(dtStartNoDetect) > 1 * 60: #TODO: 1 * 60
             if curmode == 'sit' or curmode == 'waitstand':
                 curmode = 'stand'
-                dtStartStay = dtStartNoDetect = datetime.datetime.now()
+                dtStartStay = dtStartNoDetect = now()
                 playMP3("stand.wav")
                 isReadyPlayStayFinish = True
             elif curmode == 'stand':
