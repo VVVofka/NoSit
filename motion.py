@@ -84,8 +84,8 @@ while cap.isOpened(): # метод isOpened() выводит cтатуc виде
                     playMP3("stayFinish.wav")
     print(curmode, int(maxsqr),'  Play:', ispan(dtLastPlayUp),'  Sit:', ispan(dtStartSit),'  NoDetect:', ispan(dtStartNoDetect))
     cv2.imshow("frame1", frame1)
-    frame1 = frame2  #
-    ret, frame2 = cap.read() #  
+    frame1 = frame2
+    ret, frame2 = cap.read()
  
     if cv2.waitKey(400) == 27:
         break
