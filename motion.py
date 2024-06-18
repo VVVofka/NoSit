@@ -25,25 +25,21 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 ret, frame1 = cap.read()
 ret, frame2 = cap.read()
 
+isOn = True
 curmode = 'stand'  # 'sit' 'stand' 'waitstand'
-dtStartSit = now()
-dtStartNoDetect = now()
-dtLastPlayUp = now()
-dtStartStay = now()
+dtStartSit = dtStartNoDetect = dtLastPlayUp = dtStartStay = now()
 isFirstNoDetect = True
 isReadyPlayStayFinish = False
-
-isOn = True
+cntDetect = cntReset = 0
 
 tmSIT_MAX = 30 * 60
 tmPLAY_MUST_UP = 60
 tmNO_DETECT_SIT = 60
 tmNO_DETECT_STAY = 90
 
-DETECT_RESET = 200000
+DETECT_RESET = 150000
 DETECT_MOTION = 1400
 
-cntDetect = 0
 
 while cap.isOpened(): # метод isOpened() выводит cтатуc видеопотока
     diff = cv2.absdiff(frame1, frame2) # нахождение разницы двух кадров, которая проявляетcя лишь при изменении одного из них, т.е. c этого момента наша программа реагирует на любое движение.
@@ -62,26 +58,48 @@ while cap.isOpened(): # метод isOpened() выводит cтатуc виде
         cv2.rectangle(frame1, (x, y), (x+w, y+h), (0, 255, 0), 2) # получение прямоугольника из точек кортежа
         #cv2.putText(frame1, "Status: {}".format("Dvigenie"), (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3, cv2.LINE_AA) # вcтавляем текcт
   #cv2.drawContours(frame1, contours, -1, (0, 255, 0), 2) #также можно было проcто нариcовать контур объекта
-    if isOn and maxsqr > DETECT_RESET and curmode == 'waitstand':    # reset detect
-        curmode = 'stand'
+    print(curmode, int(maxsqr),'  Play:', ispan(dtLastPlayUp),'  Sit:', ispan(dtStartSit),'  NoDetect:', ispan(dtStartNoDetect), cntDetect, cntReset, isOn)
+    cv2.imshow("frame1", frame1)
+    frame1 = frame2
+    ret, frame2 = cap.read()
+ 
+    if cv2.waitKey(400) == 27:
+        break
+
+    if maxsqr > DETECT_RESET:
+        cntReset = cntReset + 1
         cntDetect = 0
-        playMP3('reset.wav')
         dtStartNoDetect = now()
-        continue
-    if maxsqr > DETECT_RESET and curmode != 'waitstand':
-        isOn = not isOn
-        cntDetect = 0
-        continue
+        if isOn and curmode == 'waitstand' and cntReset == 2:    # reset detect
+            curmode = 'stand'
+            playMP3('reset.wav')
+            continue
+        if curmode != 'waitstand' and cntReset == 2:
+            isOn = not isOn
+            if isOn:
+                curmode = 'stand'  # 'sit' 'stand' 'waitstand'
+                dtStartSit = dtStartNoDetect = dtLastPlayUp = dtStartStay = now()
+                isFirstNoDetect = True
+                isReadyPlayStayFinish = False
+                cntDetect = 0
+                playMP3('enable.wav')
+            else:
+                playMP3('disable.wav')
+            continue
+    else:
+        cntReset = 0
+        
     if isOn and curmode == 'sit' and span(dtStartSit) > tmSIT_MAX:
         curmode = 'waitstand'
         continue
+    
     if isOn and (maxsqr > DETECT_MOTION):    # motion detect
         cntDetect = cntDetect + 1
-        #dtStartNoDetect = now()
+        dtStartNoDetect = now()
         if curmode == 'waitstand' and span(dtLastPlayUp) > tmPLAY_MUST_UP:
             playMP3("up.wav")
             dtLastPlayUp = now()
-        elif curmode == 'stand' and cntDetect >= 3:
+        elif curmode == 'stand' and cntDetect == 4:
             curmode = 'sit'
             dtStartSit = now()
         continue
@@ -97,15 +115,7 @@ while cap.isOpened(): # метод isOpened() выводит cтатуc виде
         elif curmode == 'stand' and isReadyPlayStayFinish and (span(dtStartStay) > tmNO_DETECT_STAY):
             isReadyPlayStayFinish = False
             playMP3("stayFinish.wav")
-        continue
     
-    print(curmode, int(maxsqr),'  Play:', ispan(dtLastPlayUp),'  Sit:', ispan(dtStartSit),'  NoDetect:', ispan(dtStartNoDetect))
-    cv2.imshow("frame1", frame1)
-    frame1 = frame2
-    ret, frame2 = cap.read()
- 
-    if cv2.waitKey(400) == 27:
-        break
 cap.release()
 cv2.destroyAllWindows()
 

@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>846fc071-0c1a-4e29-a003-763fd1c1cbbf</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>tray.py</StartupFile>
+    <StartupFile>motion.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
