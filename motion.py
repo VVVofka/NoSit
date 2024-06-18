@@ -1,5 +1,6 @@
 #from time import sleep
 import datetime
+from re import T
 import pygame
 import cv2
 
@@ -32,6 +33,18 @@ dtStartStay = now()
 isFirstNoDetect = True
 isReadyPlayStayFinish = False
 
+isOn = True
+
+tmSIT_MAX = 30 * 60
+tmPLAY_MUST_UP = 60
+tmNO_DETECT_SIT = 60
+tmNO_DETECT_STAY = 90
+
+DETECT_RESET = 200000
+DETECT_MOTION = 1400
+
+cntDetect = 0
+
 while cap.isOpened(): # метод isOpened() выводит cтатуc видеопотока
     diff = cv2.absdiff(frame1, frame2) # нахождение разницы двух кадров, которая проявляетcя лишь при изменении одного из них, т.е. c этого момента наша программа реагирует на любое движение.
     gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY) # перевод кадров в черно-белую градацию
@@ -49,39 +62,43 @@ while cap.isOpened(): # метод isOpened() выводит cтатуc виде
         cv2.rectangle(frame1, (x, y), (x+w, y+h), (0, 255, 0), 2) # получение прямоугольника из точек кортежа
         #cv2.putText(frame1, "Status: {}".format("Dvigenie"), (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3, cv2.LINE_AA) # вcтавляем текcт
   #cv2.drawContours(frame1, contours, -1, (0, 255, 0), 2) #также можно было проcто нариcовать контур объекта
-    if maxsqr > 200000:    # reset detect
-        if curmode == 'waitstand':
-            curmode = 'stand'
-            isFirstNoDetect = True
-            dtStartNoDetect = now()
-            playMP3('reset.wav')
-    elif maxsqr > 1400:    # motion detect
-        isFirstNoDetect = True
+    if isOn and maxsqr > DETECT_RESET and curmode == 'waitstand':    # reset detect
+        curmode = 'stand'
+        cntDetect = 0
+        playMP3('reset.wav')
         dtStartNoDetect = now()
-        if curmode == 'waitstand':
-            if span(dtLastPlayUp) > 1 * 60: #TODO: 1 * 60
-                playMP3("up.wav")
-                dtLastPlayUp = now()
-        elif curmode == 'sit':
-            if span(dtStartSit) > 30 * 60:    #TODO: 30 * 60
-                curmode = 'waitstand'
-        elif curmode == 'stand':
+        continue
+    if maxsqr > DETECT_RESET and curmode != 'waitstand':
+        isOn = not isOn
+        cntDetect = 0
+        continue
+    if isOn and curmode == 'sit' and span(dtStartSit) > tmSIT_MAX:
+        curmode = 'waitstand'
+        continue
+    if isOn and (maxsqr > DETECT_MOTION):    # motion detect
+        cntDetect = cntDetect + 1
+        #dtStartNoDetect = now()
+        if curmode == 'waitstand' and span(dtLastPlayUp) > tmPLAY_MUST_UP:
+            playMP3("up.wav")
+            dtLastPlayUp = now()
+        elif curmode == 'stand' and cntDetect >= 3:
             curmode = 'sit'
             dtStartSit = now()
-    else:      # no motion detect
-        if isFirstNoDetect:
-            isFirstNoDetect = False
+        continue
+    if isOn and maxsqr <= DETECT_MOTION:    # no motion detect
+        if cntDetect > 0:
+            cntDetect = 0
             dtStartNoDetect = now()
-        if span(dtStartNoDetect) > 1 * 60: #TODO: 1 * 60
-            if curmode == 'sit' or curmode == 'waitstand':
-                curmode = 'stand'
-                dtStartStay = dtStartNoDetect = now()
-                playMP3("stand.wav")
-                isReadyPlayStayFinish = True
-            elif curmode == 'stand':
-                if isReadyPlayStayFinish and span(dtStartStay) > 1 * 60: #TODO: 1 * 60
-                    isReadyPlayStayFinish = False
-                    playMP3("stayFinish.wav")
+        elif (curmode == 'sit' or curmode == 'waitstand') and (span(dtStartNoDetect) > tmNO_DETECT_SIT):
+            curmode = 'stand'
+            dtStartStay = dtStartNoDetect = now()
+            playMP3("stand.wav")
+            isReadyPlayStayFinish = True
+        elif curmode == 'stand' and isReadyPlayStayFinish and (span(dtStartStay) > tmNO_DETECT_STAY):
+            isReadyPlayStayFinish = False
+            playMP3("stayFinish.wav")
+        continue
+    
     print(curmode, int(maxsqr),'  Play:', ispan(dtLastPlayUp),'  Sit:', ispan(dtStartSit),'  NoDetect:', ispan(dtStartNoDetect))
     cv2.imshow("frame1", frame1)
     frame1 = frame2
